@@ -1,4 +1,4 @@
-const API_URL = 'https://script.google.com/macros/s/AKfycbzY6ByjMYHWgZfUIhDCXSiBxdijE99eDPrj_zEzcd1TMExUTc7a5gzUOJBxn2pfH3W8/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbxBWIbLNjfrhUggoxpJDj3w3orAmRyMFEeczE1I6pVtuhV2ZwopbUsHRGt4wBti80ef/exec';
 
 let financeData = [];
 
