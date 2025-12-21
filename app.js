@@ -1,37 +1,37 @@
 const API_URL = 'https://script.google.com/macros/s/AKfycbxBWIbLNjfrhUggoxpJDj3w3orAmRyMFEeczE1I6pVtuhV2ZwopbUsHRGt4wBti80ef/exec';
 
-let financeData = [];
-
 fetch(API_URL)
-  .then(res => res.json())
+  .then(response => response.json())
   .then(data => {
-    financeData = data;
-    populateYearSelect(data);
-    renderYear(data[0]);
+    console.log('Dados recebidos:', data);
+    renderTable(data);
   })
-  .catch(() => {
-    document.getElementById('output').textContent =
-      'Erro ao carregar dados da API';
+  .catch(err => {
+    console.error(err);
+    document.querySelector('tbody').innerHTML =
+      '<tr><td>Erro ao carregar dados</td></tr>';
   });
 
-function populateYearSelect(data) {
-  const select = document.getElementById('yearSelect');
+function renderTable(data) {
+  const table = document.getElementById('finance-table');
+  const thead = table.querySelector('thead');
+  const tbody = table.querySelector('tbody');
 
-  data.forEach(item => {
-    const option = document.createElement('option');
-    option.value = item.year;
-    option.textContent = item.year;
-    select.appendChild(option);
+  const headers = Object.keys(data[0]);
+
+  thead.innerHTML = `
+    <tr>
+      ${headers.map(h => `<th>${h}</th>`).join('')}
+    </tr>
+  `;
+
+  tbody.innerHTML = '';
+
+  data.forEach(row => {
+    tbody.innerHTML += `
+      <tr>
+        ${headers.map(h => `<td>${row[h]}</td>`).join('')}
+      </tr>
+    `;
   });
-
-  select.addEventListener('change', e => {
-    const year = Number(e.target.value);
-    const selected = financeData.find(d => d.year === year);
-    renderYear(selected);
-  });
-}
-
-function renderYear(yearData) {
-  document.getElementById('output').textContent =
-    JSON.stringify(yearData, null, 2);
 }
