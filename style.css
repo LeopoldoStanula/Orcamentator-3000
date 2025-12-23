@@ -1,21 +1,114 @@
 body {
-  font-family: Arial, sans-serif;
+  background: #16181d;
+  color: #e8ebf0;
+  font-family: Inter, Arial, sans-serif;
   padding: 20px;
 }
 
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.switch input {
+  display: none;
+}
+
+.switch label {
+  width: 42px;
+  height: 22px;
+  background: #555;
+  border-radius: 22px;
+  position: relative;
+  cursor: pointer;
+}
+
+.switch label::after {
+  content: '';
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  border-radius: 50%;
+  transition: 0.3s;
+}
+
+.switch input:checked + label {
+  background: #4caf50;
+}
+
+.switch input:checked + label::after {
+  left: 22px;
+}
+
+#year-filters button,
+#tabs button {
+  background: #22252e;
+  color: #e8ebf0;
+  border: none;
+  padding: 6px 10px;
+  margin: 4px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+#year-filters button.active,
+#tabs button.active {
+  background: #ff9800;
+  color: #000;
+}
+
+#summary-boxes {
+  display: flex;
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.summary-box {
+  background: #22252e;
+  padding: 12px 16px;
+  border-radius: 8px;
+  flex: 1;
+}
+
 table {
+  width: 100%;
   border-collapse: collapse;
-  margin-top: 20px;
+  background: #22252e;
+  margin-bottom: 16px;
+}
+
+th, td {
+  border: 1px solid #2f3442;
+  padding: 8px;
+  text-align: center;
 }
 
 th {
-  background: #f2f2f2;
+  background: #2b3040;
 }
 
-td, th {
-  text-align: right;
+.gain { color: #4caf50; }
+.loss { color: #ff9800; }
+
+.charts {
+  display: flex;
+  gap: 16px;
 }
 
-td:first-child, th:first-child {
-  text-align: center;
+canvas {
+  max-height: 220px;
+  background: #22252e;
+  border-radius: 8px;
+  padding: 8px;
 }
