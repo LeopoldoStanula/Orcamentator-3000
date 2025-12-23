@@ -1,49 +1,94 @@
 const API_URL = 'https://script.google.com/macros/s/AKfycbxBWIbLNjfrhUggoxpJDj3w3orAmRyMFEeczE1I6pVtuhV2ZwopbUsHRGt4wBti80ef/exec';
 
-let data = [];
+let financeData = [];
 let visibleYears = new Set();
 let currentCategory = null;
 let showValues = true;
-let chart;
+let charts = [];
 
 const money = v =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
 fetch(API_URL)
   .then(r => r.json())
-  .then(json => {
-    data = json;
+  .then(data => {
+    financeData = data;
     data.forEach(d => visibleYears.add(d.year));
     initYearFilters();
     initTabs();
     renderOverview();
   });
 
-function filtered() {
-  return data.filter(d => visibleYears.has(d.year));
+function filteredData() {
+  return financeData.filter(d => visibleYears.has(d.year));
+}
+
+/* ---------- FILTROS ---------- */
+
+function initYearFilters() {
+  const div = document.getElementById('year-filters');
+  div.innerHTML = '';
+
+  financeData.forEach(d => {
+    const btn = document.createElement('button');
+    btn.textContent = d.year;
+    btn.classList.add('active');
+    btn.onclick = () => {
+      btn.classList.toggle('active');
+      btn.classList.contains('active')
+        ? visibleYears.add(d.year)
+        : visibleYears.delete(d.year);
+      refreshView();
+    };
+    div.appendChild(btn);
+  });
+}
+
+/* ---------- ABAS ---------- */
+
+function initTabs() {
+  const tabs = document.getElementById('tabs');
+  tabs.innerHTML = '';
+
+  tabs.appendChild(createTab('Visão Geral', () => {
+    currentCategory = null;
+    renderOverview();
+  }));
+
+  Object.keys(financeData[0])
+    .filter(k => k !== 'year' && k !== 'GANHO BRUTO')
+    .forEach(cat => {
+      tabs.appendChild(createTab(cat, () => {
+        currentCategory = cat;
+        renderCategory();
+      }));
+    });
+}
+
+function createTab(label, action) {
+  const btn = document.createElement('button');
+  btn.textContent = label;
+  btn.onclick = () => {
+    document.querySelectorAll('#tabs button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    action();
+  };
+  return btn;
 }
 
 /* ---------- OVERVIEW ---------- */
 
 function renderOverview() {
-  const rows = filtered();
+  const data = filteredData();
+  const expenseKeys = Object.keys(data[0]).filter(k => k !== 'year' && k !== 'GANHO BRUTO');
 
-  const expenseKeys = Object.keys(rows[0])
-    .filter(k => k !== 'year' && k !== 'GANHO BRUTO');
-
-  const totals = rows.map(d => {
-    const expenses = expenseKeys
-      .map(k => d[k])
-      .filter(v => v > 0)
-      .reduce((a, b) => a + b, 0);
-
-    const income = d['GANHO BRUTO'] > 0 ? d['GANHO BRUTO'] : 0;
-
+  const totals = data.map(d => {
+    const expenses = expenseKeys.reduce((s, k) => s + d[k], 0);
     return {
       year: d.year,
       expense: expenses,
-      income,
-      ratio: income > 0 ? (expenses / income) * 100 : null
+      income: d['GANHO BRUTO'],
+      ratio: (expenses / d['GANHO BRUTO']) * 100
     };
   });
 
@@ -53,67 +98,59 @@ function renderOverview() {
       Ano: t.year,
       'Perda Total': money(t.expense),
       'Ganho Total': money(t.income),
-      'Relação Gasto/Ganho (%)': t.ratio !== null ? t.ratio.toFixed(2) + '%' : '-'
+      'Relação Gasto/Ganho (%)': `${t.ratio.toFixed(2)}%`
     }))
   );
 
-  renderSummary(totals);
-  renderChart(totals);
+  renderSummary(data, expenseKeys);
+  renderCharts(totals);
 }
 
 /* ---------- SUMMARY ---------- */
 
-function renderSummary(totals) {
+function renderSummary(data, expenseKeys) {
   const box = document.getElementById('summary-boxes');
+  const totalMonths = data.length * 12;
 
-  const validIncomeYears = totals.filter(t => t.income > 0).length;
-  const validExpenseYears = totals.filter(t => t.expense > 0).length;
-
-  const totalIncome = totals.reduce((s, t) => s + t.income, 0);
-  const totalExpense = totals.reduce((s, t) => s + t.expense, 0);
+  const totalIncome = data.reduce((s, d) => s + d['GANHO BRUTO'], 0);
+  const totalExpense = data.reduce(
+    (s, d) => s + expenseKeys.reduce((a, k) => a + d[k], 0), 0
+  );
 
   box.innerHTML = `
-    <div class="summary-box">Média mensal ganhos<br><strong>${money(totalIncome / (validIncomeYears * 12))}</strong></div>
-    <div class="summary-box">Média mensal gastos<br><strong>${money(totalExpense / (validExpenseYears * 12))}</strong></div>
-    <div class="summary-box">Relação total<br><strong>${((totalExpense / totalIncome) * 100).toFixed(2)}%</strong></div>
+    <div class="summary-box">Média mensal de ganhos<br><strong>${money(totalIncome / totalMonths)}</strong></div>
+    <div class="summary-box">Média mensal de gastos<br><strong>${money(totalExpense / totalMonths)}</strong></div>
+    <div class="summary-box">Relação Gasto/Ganho<br><strong>${((totalExpense / totalIncome) * 100).toFixed(2)}%</strong></div>
   `;
 }
 
 /* ---------- CATEGORIA ---------- */
 
 function renderCategory() {
-  const rows = filtered();
-  const expenseKeys = Object.keys(rows[0])
-    .filter(k => k !== 'year' && k !== 'GANHO BRUTO');
+  const data = filteredData();
+  const expenseKeys = Object.keys(data[0]).filter(k => k !== 'year' && k !== 'GANHO BRUTO');
 
   renderTable(
-    currentCategory === 'GANHO BRUTO'
-      ? ['Ano', 'Valor Anual', 'Média Mensal']
-      : ['Ano', 'Valor Anual', 'Média Mensal', 'Relação Gasto/Ganho (%)'],
-
-    rows.map(d => {
-      const value = d[currentCategory];
-      const months = value > 0 ? 12 : 0;
-      const avg = months ? value / months : 0;
-
-      const totalExpense = expenseKeys.reduce((s, k) => s + (d[k] > 0 ? d[k] : 0), 0);
-
+    ['Ano', 'Valor Anual', 'Média Mensal', 'Relação Gasto/Ganho (%)'],
+    data.map(d => {
+      const totalExpense = expenseKeys.reduce((s, k) => s + d[k], 0);
       return {
         Ano: d.year,
-        'Valor Anual': money(value),
-        'Média Mensal': months ? money(avg) : '-',
-        'Relação Gasto/Ganho (%)':
-          currentCategory === 'GANHO BRUTO'
-            ? undefined
-            : totalExpense > 0
-              ? ((value / totalExpense) * 100).toFixed(2) + '%'
-              : '-'
+        'Valor Anual': money(d[currentCategory]),
+        'Média Mensal': money(d[currentCategory] / 12),
+        'Relação Gasto/Ganho (%)': ((d[currentCategory] / totalExpense) * 100).toFixed(2) + '%'
       };
     })
   );
+
+  renderSingleChart(
+    data.map(d => d.year),
+    data.map(d => d[currentCategory]),
+    '#ff9800'
+  );
 }
 
-/* ---------- TABLE ---------- */
+/* ---------- TABELA ---------- */
 
 function renderTable(headers, rows) {
   const thead = document.querySelector('thead');
@@ -126,58 +163,54 @@ function renderTable(headers, rows) {
     const tr = document.createElement('tr');
     headers.forEach(h => {
       const td = document.createElement('td');
-      td.textContent = showValues && r[h] !== undefined ? r[h] : '-';
+      td.textContent = showValues ? r[h] : '-';
       tr.appendChild(td);
     });
     tbody.appendChild(tr);
   });
 }
 
-/* ---------- CHART ---------- */
+/* ---------- GRÁFICOS ---------- */
 
-function renderChart(totals) {
-  if (chart) chart.destroy();
+function renderCharts(totals) {
+  charts.forEach(c => c.destroy());
+  charts = [];
 
-  chart = new Chart(document.getElementById('chart'), {
+  charts.push(new Chart(document.getElementById('chart-expense'), {
     type: 'line',
     data: {
       labels: totals.map(t => t.year),
-      datasets: [
-        {
-          label: 'Gastos',
-          data: totals.map(t => t.expense),
-          borderColor: '#ff9800'
-        },
-        {
-          label: 'Ganhos',
-          data: totals.map(t => t.income),
-          borderColor: '#4caf50'
-        }
-      ]
+      datasets: [{ data: totals.map(t => t.expense), borderColor: '#ff9800', tension: 0.3 }]
     },
-    options: {
-      scales: { y: { beginAtZero: true } }
-    }
-  });
+    options: { scales: { y: { beginAtZero: true } } }
+  }));
+
+  charts.push(new Chart(document.getElementById('chart-income'), {
+    type: 'line',
+    data: {
+      labels: totals.map(t => t.year),
+      datasets: [{ data: totals.map(t => t.income), borderColor: '#4caf50', tension: 0.3 }]
+    },
+    options: { scales: { y: { beginAtZero: true } } }
+  }));
 }
 
-/* ---------- UI ---------- */
+function renderSingleChart(labels, values, color) {
+  charts.forEach(c => c.destroy());
+  charts = [
+    new Chart(document.getElementById('chart-expense'), {
+      type: 'line',
+      data: { labels, datasets: [{ data: values, borderColor: color, tension: 0.3 }] },
+      options: { scales: { y: { beginAtZero: true } } }
+    })
+  ];
+}
 
-function refresh() {
+function refreshView() {
   currentCategory ? renderCategory() : renderOverview();
 }
 
-document.getElementById('toggleValues').onchange = e => {
+document.getElementById('toggleValues').addEventListener('change', e => {
   showValues = e.target.checked;
-  refresh();
-};
-
-document.getElementById('toggleExpense').onchange = e => {
-  chart.data.datasets[0].hidden = !e.target.checked;
-  chart.update();
-};
-
-document.getElementById('toggleIncome').onchange = e => {
-  chart.data.datasets[1].hidden = !e.target.checked;
-  chart.update();
-};
+  refreshView();
+});
