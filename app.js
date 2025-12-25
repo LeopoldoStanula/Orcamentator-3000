@@ -10,18 +10,24 @@ const money = v =>
     (v === null || v === undefined || isNaN(v) || v === 0) ? "R$ 0,00" : 
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
-// Função para achar a chave correta de Ganho Bruto idependente de como foi escrita
-const getGainKey = (obj) => {
-    return Object.keys(obj).find(k => k.trim().toUpperCase() === 'GANHO BRUTO') || 'GANHO BRUTO';
-};
+// Normaliza as chaves do objeto para evitar erro de Ganho Bruto vs GANHO BRUTO
+function normalizeData(data) {
+    return data.map(item => {
+        const normalized = {};
+        for (let key in item) {
+            // Remove espaços e deixa tudo em maiúsculo para comparação segura
+            const cleanKey = key.trim().toUpperCase();
+            normalized[cleanKey] = item[key];
+        }
+        return normalized;
+    });
+}
 
 fetch(API_URL)
     .then(r => r.json())
     .then(data => {
-        // Limpar dados e garantir que os anos sejam números
-        financeData = data.filter(d => d.year || d.year === 0);
-        financeData.forEach(d => visibleYears.add(d.year));
-        
+        financeData = normalizeData(data).filter(d => d.YEAR || d.YEAR === 0);
+        financeData.forEach(d => visibleYears.add(d.YEAR));
         initYearFilters();
         initTabs();
         refreshView();
@@ -30,8 +36,7 @@ fetch(API_URL)
 function initYearFilters() {
     const div = document.getElementById('year-filters');
     div.innerHTML = '';
-    const years = [...new Set(financeData.map(d => d.year))].sort();
-    
+    const years = [...new Set(financeData.map(d => d.YEAR))].sort();
     years.forEach(year => {
         const btn = document.createElement('button');
         btn.textContent = year;
@@ -48,25 +53,23 @@ function initYearFilters() {
 function initTabs() {
     const tabs = document.getElementById('tabs');
     tabs.innerHTML = '';
-    
-    const btnGeral = createTab('Visão Geral', () => { currentCategory = null; renderOverview(); });
-    btnGeral.classList.add('active');
-    tabs.appendChild(btnGeral);
+    tabs.appendChild(createTab('Visão Geral', () => { currentCategory = null; renderOverview(); }, true));
 
-    const gainKey = getGainKey(financeData[0]);
-    Object.keys(financeData[0])
-        .filter(k => k !== 'year' && k !== gainKey && k.trim() !== "")
-        .forEach(cat => {
-            tabs.appendChild(createTab(cat, () => { currentCategory = cat; renderCategory(); }));
-        });
-
-    tabs.appendChild(createTab('GANHO BRUTO', () => { currentCategory = gainKey; renderCategory(); }));
+    if (financeData.length > 0) {
+        Object.keys(financeData[0])
+            .filter(k => k !== 'YEAR' && k !== 'GANHO BRUTO' && k !== 'CONTA' && k.trim() !== "")
+            .forEach(cat => {
+                tabs.appendChild(createTab(cat, () => { currentCategory = cat; renderCategory(); }));
+            });
+    }
+    tabs.appendChild(createTab('GANHO BRUTO', () => { currentCategory = 'GANHO BRUTO'; renderCategory(); }));
 }
 
-function createTab(label, action) {
+function createTab(label, action, active = false) {
     const btn = document.createElement('button');
     btn.textContent = label;
-    btn.onclick = (e) => {
+    if (active) btn.classList.add('active');
+    btn.onclick = () => {
         document.querySelectorAll('#tabs button').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         action();
@@ -75,15 +78,14 @@ function createTab(label, action) {
 }
 
 function renderOverview() {
-    const data = financeData.filter(d => visibleYears.has(d.year));
-    const gainKey = getGainKey(data[0] || {});
-    const expenseKeys = Object.keys(data[0] || {}).filter(k => k !== 'year' && k !== gainKey && k.trim() !== "");
+    const data = financeData.filter(d => visibleYears.has(d.YEAR));
+    const expenseKeys = Object.keys(data[0] || {}).filter(k => k !== 'YEAR' && k !== 'GANHO BRUTO' && k !== 'CONTA' && k.trim() !== "");
 
     const tableRows = data.map(d => {
-        const totalLoss = expenseKeys.reduce((s, k) => s + (Number(d[k]) || 0), 0);
-        const totalGain = Number(d[gainKey]) || 0;
+        const totalLoss = expenseKeys.reduce((s, k) => s + (parseFloat(d[k]) || 0), 0);
+        const totalGain = parseFloat(d['GANHO BRUTO']) || 0;
         return {
-            'Ano': d.year,
+            'Ano': d.YEAR,
             'Perda Total': totalLoss,
             'Ganho Total': totalGain,
             'Relação': totalGain > 0 ? ((totalLoss / totalGain) * 100).toFixed(2) + '%' : '-'
@@ -92,35 +94,31 @@ function renderOverview() {
 
     renderTable(['Ano', 'Perda Total', 'Ganho Total', 'Relação'], tableRows);
     renderSummary(tableRows, 'OVERVIEW');
-    
-    updateChart(data.map(d => d.year), [
+    updateChart(data.map(d => d.YEAR), [
         { label: 'Ganhos', data: tableRows.map(r => r['Ganho Total']), color: '#4caf50' },
         { label: 'Gastos', data: tableRows.map(r => r['Perda Total']), color: '#ff9800' }
     ]);
 }
 
 function renderCategory() {
-    const data = financeData.filter(d => visibleYears.has(d.year));
-    const gainKey = getGainKey(data[0] || {});
-    const isGainTab = currentCategory === gainKey;
-    const expenseKeys = Object.keys(data[0] || {}).filter(k => k !== 'year' && k !== gainKey && k.trim() !== "");
+    const data = financeData.filter(d => visibleYears.has(d.YEAR));
+    const isGainTab = currentCategory === 'GANHO BRUTO';
 
     const tableRows = data.map(d => {
-        const val = Number(d[currentCategory]) || 0;
-        const totalYearlyLoss = expenseKeys.reduce((s, k) => s + (Number(d[k]) || 0), 0);
+        const val = parseFloat(d[currentCategory]) || 0;
+        const totalGain = parseFloat(d['GANHO BRUTO']) || 0;
         return {
-            'Ano': d.year,
+            'Ano': d.YEAR,
             'Valor Anual': val,
             'Média Mensal': val / 12,
-            '% do Gasto Total': totalYearlyLoss > 0 ? ((val / totalYearlyLoss) * 100).toFixed(2) + '%' : '0%'
+            'Relação (Sua Lógica %)': totalGain > 0 ? ((val / totalGain) * 100).toFixed(2) + '%' : '-'
         };
     });
 
-    const headers = isGainTab ? ['Ano', 'Valor Anual', 'Média Mensal'] : ['Ano', 'Valor Anual', 'Média Mensal', '% do Gasto Total'];
+    const headers = isGainTab ? ['Ano', 'Valor Anual', 'Média Mensal'] : ['Ano', 'Valor Anual', 'Média Mensal', 'Relação (Sua Lógica %)'];
     renderTable(headers, tableRows);
     renderSummary(tableRows, 'CATEGORY');
-
-    updateChart(data.map(d => d.year), [
+    updateChart(data.map(d => d.YEAR), [
         { label: currentCategory, data: tableRows.map(r => r['Valor Anual']), color: isGainTab ? '#4caf50' : '#ff9800' }
     ]);
 }
@@ -158,7 +156,7 @@ function renderTable(headers, rows) {
             const rawVal = r[h];
             td.textContent = (showValues || h === 'Ano') ? (typeof rawVal === 'number' ? money(rawVal) : rawVal) : '-';
             if (h.includes('Ganho')) td.className = 'gain';
-            if (h.includes('Perda') || h.includes('Gasto')) td.className = 'loss';
+            if (h.includes('Perda') || h.includes('Gasto') || h === currentCategory) td.className = currentCategory === 'GANHO BRUTO' ? 'gain' : 'loss';
             tr.appendChild(td);
         });
         tbody.appendChild(tr);
@@ -168,7 +166,6 @@ function renderTable(headers, rows) {
 function updateChart(labels, datasets) {
     const ctx = document.getElementById('main-chart').getContext('2d');
     if (myChart) myChart.destroy();
-
     myChart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -189,8 +186,8 @@ function updateChart(labels, datasets) {
             maintainAspectRatio: false,
             interaction: { mode: 'index', intersect: false },
             plugins: {
-                legend: { position: 'top', labels: { color: '#aaa', font: { size: 12 } } },
-                tooltip: { padding: 12, backgroundColor: '#1c1f27', titleFont: { size: 14 } }
+                legend: { position: 'top', labels: { color: '#aaa' } },
+                tooltip: { padding: 12, backgroundColor: '#1c1f27' }
             },
             scales: {
                 y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#666' } },
