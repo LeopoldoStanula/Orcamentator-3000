@@ -1,0 +1,23 @@
+function doGet() {
+  const sheet = SpreadsheetApp
+    .openById('1YEP-YS5JTlDhIkc5ZyRXClphWPGp9QJEWUavcegRYF8')
+    .getSheets()[0];
+
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const rows = data.slice(1);
+
+  const result = rows.map(row => {
+    const obj = { year: row[0] };
+
+    headers.slice(1).forEach((header, i) => {
+      obj[header] = Number(row[i + 1]) || 0;
+    });
+
+    return obj;
+  });
+
+  return ContentService
+    .createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
+}
