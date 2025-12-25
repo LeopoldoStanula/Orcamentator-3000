@@ -2,13 +2,14 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Finance Dashboard</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <div class="top-bar">
-  <div></div>
+  <div class="logo">📊 <span>Finance<strong>Dashboard</strong></span></div>
   <div class="switch">
     <span>Mostrar valores</span>
     <input type="checkbox" id="toggleValues" checked>
@@ -16,20 +17,21 @@
   </div>
 </div>
 
-<div id="year-filters"></div>
-<div id="tabs"></div>
+<div id="year-filters" class="filter-container"></div>
+<div id="tabs" class="tab-container"></div>
 
 <div id="summary-boxes"></div>
 
 <div id="content">
-  <table id="data-table">
-    <thead></thead>
-    <tbody></tbody>
-  </table>
+  <div class="table-wrapper">
+    <table id="data-table">
+      <thead></thead>
+      <tbody></tbody>
+    </table>
+  </div>
 
-  <div class="charts">
-    <canvas id="chart-expense"></canvas>
-    <canvas id="chart-income"></canvas>
+  <div class="charts-container">
+    <canvas id="main-chart"></canvas>
   </div>
 </div>
 
