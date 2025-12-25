@@ -2,21 +2,40 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Finance Dashboard</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<h1>Finance Dashboard</h1>
+<div class="top-bar">
+  <div class="logo">📊 <span>Finance<strong>Dashboard</strong></span></div>
+  <div class="switch">
+    <span>Mostrar valores</span>
+    <input type="checkbox" id="toggleValues" checked>
+    <label for="toggleValues"></label>
+  </div>
+</div>
 
-<table border="1" cellpadding="8" id="finance-table">
-  <thead></thead>
-  <tbody>
-    <tr>
-      <td>Carregando dados...</td>
-    </tr>
-  </tbody>
-</table>
+<div id="year-filters" class="filter-container"></div>
+<div id="tabs" class="tab-container"></div>
 
+<div id="summary-boxes"></div>
+
+<div id="content">
+  <div class="table-wrapper">
+    <table id="data-table">
+      <thead></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="charts-container">
+    <canvas id="main-chart"></canvas>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="app.js"></script>
 
 </body>
