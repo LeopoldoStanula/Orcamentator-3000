@@ -10,14 +10,23 @@ const money = v =>
     (v === null || v === undefined || isNaN(v) || v === 0) ? "R$ 0,00" : 
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
-// Normaliza as chaves do objeto para evitar erro de Ganho Bruto vs GANHO BRUTO
+// Função de normalização ultra simples para não quebrar valores decimais
 function normalizeData(data) {
     return data.map(item => {
         const normalized = {};
         for (let key in item) {
-            // Remove espaços e deixa tudo em maiúsculo para comparação segura
             const cleanKey = key.trim().toUpperCase();
-            normalized[cleanKey] = item[key];
+            let val = item[key];
+            
+            if (cleanKey === 'YEAR') {
+                normalized[cleanKey] = val;
+            } else {
+                // Se for string com R$, limpa apenas o essencial para virar número
+                if (typeof val === 'string') {
+                    val = val.replace('R$', '').replace(/\s/g, '').replace('.', '').replace(',', '.');
+                }
+                normalized[cleanKey] = parseFloat(val) || 0;
+            }
         }
         return normalized;
     });
@@ -82,18 +91,33 @@ function renderOverview() {
     const expenseKeys = Object.keys(data[0] || {}).filter(k => k !== 'YEAR' && k !== 'GANHO BRUTO' && k !== 'CONTA' && k.trim() !== "");
 
     const tableRows = data.map(d => {
-        const totalLoss = expenseKeys.reduce((s, k) => s + (parseFloat(d[k]) || 0), 0);
-        const totalGain = parseFloat(d['GANHO BRUTO']) || 0;
+        const totalLoss = expenseKeys.reduce((s, k) => s + (d[k] || 0), 0);
+        const totalGain = d['GANHO BRUTO'] || 0;
         return {
             'Ano': d.YEAR,
             'Perda Total': totalLoss,
             'Ganho Total': totalGain,
-            'Relação': totalGain > 0 ? ((totalLoss / totalGain) * 100).toFixed(2) + '%' : '-'
+            'Relação Gasto/Ganho': totalGain > 0 ? ((totalLoss / totalGain) * 100).toFixed(2) + '%' : '-'
         };
     });
 
-    renderTable(['Ano', 'Perda Total', 'Ganho Total', 'Relação'], tableRows);
-    renderSummary(tableRows, 'OVERVIEW');
+    renderTable(['Ano', 'Perda Total', 'Ganho Total', 'Relação Gasto/Ganho'], tableRows);
+    
+    const totalG = data.reduce((s, d) => s + (d['GANHO BRUTO'] || 0), 0);
+    const totalL = data.reduce((s, d) => s + expenseKeys.reduce((sum, k) => sum + (d[k] || 0), 0), 0);
+    
+    const yearsWithGain = data.filter(d => d['GANHO BRUTO'] > 0).length;
+    const avgG = yearsWithGain > 0 ? totalG / (yearsWithGain * 12) : 0;
+    
+    const yearsWithLoss = data.filter(d => expenseKeys.reduce((sum, k) => sum + (d[k] || 0), 0) > 0).length;
+    const avgL = yearsWithLoss > 0 ? totalL / (yearsWithLoss * 12) : 0;
+
+    renderSummaryBoxes([
+        { label: 'Média Mensal Ganhos', value: money(avgG), color: '#4caf50' },
+        { label: 'Média Mensal Gastos', value: money(avgL), color: '#ff9800' },
+        { label: 'Relação Gasto/Ganho', value: totalG > 0 ? ((totalL / totalG) * 100).toFixed(2) + '%' : '-', color: '#e8ebf0' }
+    ]);
+
     updateChart(data.map(d => d.YEAR), [
         { label: 'Ganhos', data: tableRows.map(r => r['Ganho Total']), color: '#4caf50' },
         { label: 'Gastos', data: tableRows.map(r => r['Perda Total']), color: '#ff9800' }
@@ -105,42 +129,49 @@ function renderCategory() {
     const isGainTab = currentCategory === 'GANHO BRUTO';
 
     const tableRows = data.map(d => {
-        const val = parseFloat(d[currentCategory]) || 0;
-        const totalGain = parseFloat(d['GANHO BRUTO']) || 0;
+        const val = d[currentCategory] || 0;
+        const totalGain = d['GANHO BRUTO'] || 0;
         return {
             'Ano': d.YEAR,
             'Valor Anual': val,
-            'Média Mensal': val / 12,
-            'Relação (Sua Lógica %)': totalGain > 0 ? ((val / totalGain) * 100).toFixed(2) + '%' : '-'
+            'Média Mensal': val > 0 ? val / 12 : 0,
+            'Relação Gasto/Ganho': totalGain > 0 ? ((val / totalGain) * 100).toFixed(2) + '%' : '-'
         };
     });
 
-    const headers = isGainTab ? ['Ano', 'Valor Anual', 'Média Mensal'] : ['Ano', 'Valor Anual', 'Média Mensal', 'Relação (Sua Lógica %)'];
+    const headers = isGainTab ? ['Ano', 'Valor Anual', 'Média Mensal'] : ['Ano', 'Valor Anual', 'Média Mensal', 'Relação Gasto/Ganho'];
     renderTable(headers, tableRows);
-    renderSummary(tableRows, 'CATEGORY');
+
+    const totalCat = data.reduce((s, d) => s + (d[currentCategory] || 0), 0);
+    const totalGainAll = data.reduce((s, d) => s + (d['GANHO BRUTO'] || 0), 0);
+    
+    const yearsWithVal = data.filter(d => d[currentCategory] > 0).length;
+    const avgCat = yearsWithVal > 0 ? totalCat / (yearsWithVal * 12) : 0;
+
+    const boxes = [
+        { label: 'Total Acumulado', value: money(totalCat), color: isGainTab ? '#4caf50' : '#ff9800' },
+        { label: `Média Mensal (${yearsWithVal} anos)`, value: money(avgCat), color: '#aaa' }
+    ];
+
+    if (!isGainTab) {
+        boxes.push({ label: 'Relação Gasto/Ganho', value: totalGainAll > 0 ? ((totalCat / totalGainAll) * 100).toFixed(2) + '%' : '-', color: '#e8ebf0' });
+    }
+
+    renderSummaryBoxes(boxes);
+
     updateChart(data.map(d => d.YEAR), [
         { label: currentCategory, data: tableRows.map(r => r['Valor Anual']), color: isGainTab ? '#4caf50' : '#ff9800' }
     ]);
 }
 
-function renderSummary(rows, type) {
-    const box = document.getElementById('summary-boxes');
-    const totalMonths = rows.length * 12;
-
-    if (type === 'OVERVIEW') {
-        const totalG = rows.reduce((s, r) => s + r['Ganho Total'], 0);
-        const totalL = rows.reduce((s, r) => s + r['Perda Total'], 0);
-        box.innerHTML = `
-            <div class="summary-box" style="border-top-color: #4caf50"><span>Média Ganhos</span><strong>${showValues ? money(totalG / totalMonths) : '-'}</strong></div>
-            <div class="summary-box" style="border-top-color: #ff9800"><span>Média Gastos</span><strong>${showValues ? money(totalL / totalMonths) : '-'}</strong></div>
-        `;
-    } else {
-        const totalC = rows.reduce((s, r) => s + r['Valor Anual'], 0);
-        box.innerHTML = `
-            <div class="summary-box"><span>Média Mensal (${currentCategory})</span><strong>${showValues ? money(totalC / totalMonths) : '-'}</strong></div>
-            <div class="summary-box"><span>Total Acumulado</span><strong>${showValues ? money(totalC) : '-'}</strong></div>
-        `;
-    }
+function renderSummaryBoxes(boxes) {
+    const container = document.getElementById('summary-boxes');
+    container.innerHTML = boxes.map(b => `
+        <div class="summary-box" style="border-top-color: ${b.color}">
+            <span>${b.label}</span>
+            <strong>${showValues ? b.value : '-'}</strong>
+        </div>
+    `).join('');
 }
 
 function renderTable(headers, rows) {
@@ -154,7 +185,11 @@ function renderTable(headers, rows) {
         headers.forEach(h => {
             const td = document.createElement('td');
             const rawVal = r[h];
-            td.textContent = (showValues || h === 'Ano') ? (typeof rawVal === 'number' ? money(rawVal) : rawVal) : '-';
+            if (h === 'Ano') {
+                td.textContent = rawVal;
+            } else {
+                td.textContent = (showValues) ? (typeof rawVal === 'number' ? money(rawVal) : rawVal) : '-';
+            }
             if (h.includes('Ganho')) td.className = 'gain';
             if (h.includes('Perda') || h.includes('Gasto') || h === currentCategory) td.className = currentCategory === 'GANHO BRUTO' ? 'gain' : 'loss';
             tr.appendChild(td);
