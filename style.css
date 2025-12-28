@@ -1,21 +1,73 @@
 body {
-  font-family: Arial, sans-serif;
-  padding: 20px;
+  background: #1c1f27;
+  color: #e8ebf0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  padding: 24px;
+  margin: 0;
+  overflow-x: hidden; /* Garante que não haja scroll horizontal */
 }
 
-table {
-  border-collapse: collapse;
-  margin-top: 20px;
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
 }
 
-th {
-  background: #f2f2f2;
+.switch { display: flex; align-items: center; gap: 12px; font-size: 0.9rem; color: #aaa; }
+.switch input { display: none; }
+.switch label {
+  width: 44px; height: 22px; background: #3f4458;
+  border-radius: 20px; position: relative; cursor: pointer; transition: 0.3s;
+}
+.switch label::after {
+  content: ''; width: 16px; height: 16px; background: #fff;
+  position: absolute; top: 3px; left: 4px; border-radius: 50%; transition: 0.3s;
+}
+.switch input:checked + label { background: #4caf50; }
+.switch input:checked + label::after { left: 24px; }
+
+.filter-container, .tab-container { margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+
+button {
+  background: #2b3040; color: #e8ebf0; border: 1px solid #3f4458;
+  padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: 0.2s; font-size: 0.9rem;
+}
+button:hover { background: #3f4458; }
+button.active { background: #ff9800; color: #000; font-weight: 600; border-color: #ff9800; }
+
+#summary-boxes { display: flex; gap: 16px; margin: 24px 0; }
+.summary-box {
+  background: #22252e; padding: 20px; border-radius: 12px; flex: 1;
+  border-top: 4px solid #3f4458; transition: 0.3s;
+}
+.summary-box span { font-size: 0.85rem; color: #aaa; text-transform: uppercase; }
+.summary-box strong { display: block; font-size: 1.5rem; margin-top: 8px; }
+
+.table-wrapper { background: #22252e; border-radius: 12px; overflow: hidden; margin-bottom: 24px; border: 1px solid #2f3442; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 14px; text-align: center; border-bottom: 1px solid #2f3442; }
+th { background: rgba(255,255,255,0.03); color: #888; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; }
+
+.gain { color: #4caf50 !important; }
+.loss { color: #ff9800 !important; }
+
+/* Layout de Gráficos Lado a Lado */
+/* ... (mantenha o restante igual) ... */
+
+.charts-layout {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+  margin-top: 24px;
 }
 
-td, th {
-  text-align: right;
-}
-
-td:first-child, th:first-child {
-  text-align: center;
+.chart-box {
+  background: #22252e;
+  padding: 24px;
+  border-radius: 12px;
+  height: 400px; /* Aumentado levemente para melhor leitura */
+  border: 1px solid #2f3442;
+  flex: 1;
+  min-width: 0;
 }
