@@ -9,15 +9,22 @@
 <body>
 
 <div class="top-bar">
-  <div></div> <div class="switch">
+  <div></div>
+  <div class="switch">
     <span>Mostrar valores</span>
     <input type="checkbox" id="toggleValues" checked>
     <label for="toggleValues"></label>
   </div>
 </div>
 
-<div id="year-filters" class="filter-container"></div>
-<div id="tabs" class="tab-container"></div>
+<div class="filter-section">
+  <small>Filtrar Anos:</small>
+  <div id="year-filters" class="year-chips"></div>
+</div>
+
+<div class="navigation-section">
+  <div id="tabs" class="tab-container"></div>
+</div>
 
 <div id="summary-boxes"></div>
 
@@ -29,12 +36,26 @@
     </table>
   </div>
 
-  <div class="charts-layout">
+  <div class="charts-grid">
     <div class="chart-box">
       <canvas id="main-chart"></canvas>
     </div>
     <div class="chart-box">
       <canvas id="ratio-chart"></canvas>
+    </div>
+  </div>
+
+  <div class="charts-grid full-width" id="category-chart-container" style="display:none;">
+    <div class="chart-box">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <div></div>
+        <div class="switch">
+          <span style="font-size: 0.8rem; color: #aaa;">Visualizar gastos médios mensais</span>
+          <input type="checkbox" id="toggleMonthlyAverages">
+          <label for="toggleMonthlyAverages"></label>
+        </div>
+      </div>
+      <canvas id="category-chart"></canvas>
     </div>
   </div>
 </div>
